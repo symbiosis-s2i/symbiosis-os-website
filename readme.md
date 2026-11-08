@@ -1,31 +1,60 @@
-# Symbiosis OS landing page
+# Symbiosis landing page
 
-Static site: no build step, no framework, no runtime dependency. Netlify publishes `main` as it is.
+Static site. No build step, no framework, no runtime dependency. Serve the
+directory and it works.
 
 ```
-python3 -m http.server 8901
+npx http-server site -p 8901
+# or
+python3 -m http.server 8901 -d site
 ```
 
-## Files
+## Where the design came from
+
+The visual design was authored in Claude Design. That tool's component
+runtime forbids stylesheets, so the artifact it produced carried every rule
+in an inline `style` attribute, kept hover states in a `style-hover`
+attribute its runtime read, drove all responsive behaviour from a single JS
+resize listener, and shipped React plus a component runtime to render static
+markup.
+
+This directory is that design ported to a real page. The layout is
+unchanged - the inline styles the design shipped with are still there, on
+purpose, because rewriting 1,376 of them into classes would be a redesign in
+everything but name. What changed is everything the design needed in order
+to be correct rather than merely to look correct. `DESIGN.md` in the repo
+root records that pass in full.
+
+## Layout
 
 | Path | What it is |
 |---|---|
-| `index.html` | The page, with the Bulgarian text in the markup so it reads and indexes without JavaScript |
-| `styles.css` | The platform's palette and type, layout, the breakpoints |
-| `app.js` | Language switch, phone menu, header hairline, one fade-in per block |
-| `i18n.js` | English for every `data-i` and `data-ia` key in the markup |
-| `assets/fonts/` | Manrope, Unbounded and JetBrains Mono, Latin and Cyrillic subsets, the same files the platform uses |
-| `assets/img/` | Persona portraits, the two marks, the favicon (WebP) |
+| `index.html` | The page. 22 sections, Bulgarian in the markup so it reads and indexes without JavaScript |
+| `styles.css` | Webfaces, reset, keyframes, the 20 hover/focus states, the breakpoints |
+| `app.js` | Reveal, scroll chrome, score dial, ratio bars, Cinema slate, FAQ accordion, menu, language |
+| `i18n.js` | BG and EN, 550 keys each, covering every `data-i` and `data-ia` in the markup |
+| `assets/fonts/` | 7 subset woff2: Inter and JetBrains Mono (variable, Latin + Cyrillic), Playfair Display italic, and a 21-glyph symbol face |
+| `assets/img/` | 3 persona portraits, 2 marks, 1 favicon - WebP |
 
-## Rules the page keeps
+Full-resolution originals live in `brand-assets/` at the repo root, out of
+the deploy path.
 
-- **The platform's look.** Ink ground `#090a12`, violet `#5b61e4` as the one accent for actions, electric cyan
-  `#00d4ff` only inside data. Manrope for text, Unbounded for large headlines, JetBrains Mono for timecodes.
-- **Standard Cyrillic letterforms.** The page is `lang="bg"`, which would switch on the fonts' Bulgarian forms
-  (д like g); `font-feature-settings: "locl" 0` keeps the shapes the platform shows.
-- **Fast on slow phones.** Nothing loops, nothing blurs, images below the first screen load lazily, and the only
-  motion is a short fade when a block first appears (none with reduced motion).
-- **Only true claims.** Numbers in the previews are labeled as samples; research figures link to their source.
-  Do not add customer results or features the platform does not have.
-- **Every text in both languages.** A new `data-i` key in `index.html` needs its English entry in `i18n.js`.
-- **No em dashes, no emoji, no exclamation marks.**
+## Language
+
+Bulgarian is the markup default; `app.js` swaps to English on request.
+`?lang=en` in the URL wins over whatever the browser last stored, so the
+`hreflang` alternates actually resolve. Both languages carry translated
+`alt` text and `aria-label`s via `data-ia`.
+
+## Things worth knowing before editing
+
+- **Inline styles beat class selectors.** Every hover rule in `styles.css`
+  carries `!important` for that reason. If you add a hover state, follow the
+  same pattern or it will silently do nothing.
+- **`data-mob="hide"` / `data-mob="only"`** are driven by media queries now,
+  not JavaScript. Do not reintroduce a resize listener for them.
+- **The symbol face matters.** `▶ ✓ ✕ ◆ ◉ ✦ →` and the rest of the geometric
+  marks exist in neither Inter nor JetBrains Mono. Without `SymIcons` in the
+  font stack, iOS and Android resolve several of them as colour emoji.
+- **`Instrument Serif` has no Cyrillic.** That is why the hero's third line
+  is set in Playfair Display. Do not swap it back.
