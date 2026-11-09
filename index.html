@@ -4,6 +4,42 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
+<!-- Which language to open in, decided before the first paint so nobody sees the other one flash by.
+     In order: ?lang= in the address, the language this visitor chose last time, then the browser's
+     own language: Bulgarian when it is Bulgarian, English for everyone else. The page text in this
+     file is Bulgarian (search engines read it); app.js swaps it to English when this says so. -->
+<script>
+(function () {
+  var lang = null, auto = false;
+  try {
+    var q = new URLSearchParams(location.search).get('lang');
+    if (q === 'en' || q === 'bg') lang = q;
+  } catch (e) { /* old browser: fall through */ }
+  if (!lang) {
+    try {
+      var saved = localStorage.getItem('sym-lang');
+      if (saved === 'en' || saved === 'bg') lang = saved;
+    } catch (e) { /* private mode */ }
+  }
+  if (!lang) {
+    var prefs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+    lang = /^bg(-|$)/i.test(prefs[0] || '') ? 'bg' : 'en';
+    auto = true;
+  }
+  window.__symLang = lang;
+  window.__symLangAuto = auto;
+  if (lang === 'en') {
+    document.documentElement.lang = 'en';
+    // Hidden until app.js has swapped the text; the style below shows the page anyway after 1.5s if it never does.
+    document.documentElement.setAttribute('data-boot', 'en');
+  }
+})();
+</script>
+<style>
+html[data-boot]:not(.sym-ready) body { opacity: 0; animation: sym-boot-reveal 0s linear 1.5s forwards; }
+@keyframes sym-boot-reveal { to { opacity: 1; } }
+</style>
+
 <title>Symbiosis OS - AI платформа за бизнес растеж | 90+ AI модела в едно | Sell 2 Inspire</title>
 <meta name="description" content="Symbiosis OS обединява AI видео създаване (Synema), кампанийни страници с AI търсене, продажби, клиенти, оферти и проекти в една система. Над 90 AI модела без отделни абонаменти.">
 

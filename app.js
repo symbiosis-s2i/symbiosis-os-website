@@ -36,7 +36,9 @@
   // Set by the Synema slate: it copies the active step's words, so a language switch has to copy them again.
   var refreshSlate = null;
 
-  function swap(next) {
+  // remember: false when the page picked the language itself (from the browser's language), so a guess is never
+  // stored as if the visitor had chosen it. A click on BG or EN, or ?lang= in the address, is a choice.
+  function swap(next, remember) {
     var dict = window.I18N && window.I18N[next];
     lang = next;
     document.documentElement.lang = next;
@@ -79,7 +81,9 @@
       b.setAttribute('aria-selected', on ? 'true' : 'false');
     });
 
-    try { localStorage.setItem('sym-lang', next); } catch (e) { /* private mode */ }
+    if (remember !== false) {
+      try { localStorage.setItem('sym-lang', next); } catch (e) { /* private mode */ }
+    }
   }
 
   /* ---------- menu ---------- */
@@ -769,12 +773,22 @@
   followOldAnchor();
   window.addEventListener('hashchange', followOldAnchor);
 
-  // An explicit ?lang= is a deliberate request and outranks whatever this
-  // browser stored last time; otherwise the hreflang alternates would do
-  // nothing for a returning visitor.
-  var initial = null;
-  var q = new URLSearchParams(location.search).get('lang');
-  if (q === 'en' || q === 'bg') initial = q;
-  else { try { initial = localStorage.getItem('sym-lang'); } catch (e) { /* private mode */ } }
-  if (initial === 'en') swap('en');
+  // The opening language is decided by the script at the top of index.html
+  // (so the page never flashes the wrong one): ?lang= in the address, then
+  // the visitor's last choice, then the browser's language. A ?lang= outranks
+  // what the browser stored, or the hreflang alternates would do nothing for
+  // a returning visitor.
+  var initial = window.__symLang;
+  if (initial !== 'en' && initial !== 'bg') {
+    // The head script is missing or did not run: fall back to the old rule.
+    initial = null;
+    var q = new URLSearchParams(location.search).get('lang');
+    if (q === 'en' || q === 'bg') initial = q;
+    else { try { initial = localStorage.getItem('sym-lang'); } catch (e) { /* private mode */ } }
+  }
+  if (initial === 'en') swap('en', !window.__symLangAuto);
+
+  // Text is in place: show the page.
+  document.documentElement.classList.add('sym-ready');
+  document.documentElement.removeAttribute('data-boot');
 })();
