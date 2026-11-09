@@ -237,7 +237,7 @@ summary::-webkit-details-marker { display: none; }
   [data-mob="only"] { display: none !important; }
 }
 
-/* The Cinema section is the page's one grid with a fixed two-column
+/* The Synema section is the page's one grid with a fixed two-column
    template - every other grid uses auto-fit and folds on its own. With no
    media query it held both columns all the way down: at 390px that is a
    148px card beside a 196px one, three words to a line, which is what
@@ -520,7 +520,7 @@ section[data-band] {
    10. The cinematic layer
 
    Rim light on the hero personas, a sheen across the character vault,
-   instruments in Cinema and AI Search that look operated rather than
+   instruments in Synema and AI Search that look operated rather than
    printed. Everything here is decorative, touches no layout box, and
    animates only transform, opacity and filter, so the compositor
    carries all of it. The reduced-motion block in section 3 already
@@ -653,7 +653,7 @@ section[data-band] {
   to   { transform: translate3d(130%, 0, 0); }
 }
 
-/* --- cinema slate: the rail acknowledges each step change ------------- */
+/* --- Synema slate: the rail acknowledges each step change ------------- */
 
 [data-slate-rail] { transform-origin: 50% 50%; }
 .sym-rail-pulse {
@@ -764,4 +764,20 @@ div:has(> div > div > p[data-i="cn.chat.a1"])::before {
 div.sym-idle:has(> div > div > p[data-i="cn.chat.a1"])::before,
 #aisearch [data-gridfield].sym-idle::after {
   animation-play-state: paused;
+}
+
+/* --- phones: no label below 11px ---------------------------------------
+   The small mono labels (research sources, units, chart, step and chat
+   labels) are fine on a desktop screen, but on a phone, portrait or
+   landscape, they were 9 to 10px. There they read at 11px; the desktop
+   keeps its finer type. */
+@media (max-width: 560px), (hover: none) and (max-height: 500px) {
+  [style*="font-size:.58rem"],
+  [style*="font-size:.6rem"],
+  [style*="font-size:.62rem"],
+  [style*="font-size:.64rem"],
+  [style*="font-size:.66rem"],
+  [style*="font-size:.68rem"] {
+    font-size: 11px !important;
+  }
 }

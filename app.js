@@ -23,16 +23,18 @@
 
   var META = {
     bg: {
-      title: 'Symbiosis OS - AI платформа за бизнес растеж | 100+ AI модела в едно | Sell 2 Inspire',
-      desc: 'Symbiosis OS обединява AI видео създаване (Cinema), кампанийни страници с AI търсене, продажби, клиенти, оферти и проекти в една система. Над 100 AI модела без допълнителни абонаменти.'
+      title: 'Symbiosis OS - AI платформа за бизнес растеж | 90+ AI модела в едно | Sell 2 Inspire',
+      desc: 'Symbiosis OS обединява AI видео създаване (Synema), кампанийни страници с AI търсене, продажби, клиенти, оферти и проекти в една система. Над 90 AI модела без отделни абонаменти.'
     },
     en: {
-      title: 'Symbiosis OS - the AI platform for business growth | 100+ AI models in one | Sell 2 Inspire',
-      desc: 'Symbiosis OS brings AI video production (Cinema), AI-search campaign pages, sales, clients, proposals and projects into one system. Over 100 AI models, no extra subscriptions.'
+      title: 'Symbiosis OS - the AI platform for business growth | 90+ AI models in one | Sell 2 Inspire',
+      desc: 'Symbiosis OS brings AI video production (Synema), AI-search campaign pages, sales, clients, proposals and projects into one system. 90+ AI models, no extra subscriptions.'
     }
   };
 
   var lang = 'bg';
+  // Set by the Synema slate: it copies the active step's words, so a language switch has to copy them again.
+  var refreshSlate = null;
 
   function swap(next) {
     var dict = window.I18N && window.I18N[next];
@@ -67,6 +69,8 @@
       var ogd = document.querySelector('meta[property="og:description"]');
       if (ogd) ogd.setAttribute('content', meta.desc);
     }
+
+    if (refreshSlate) refreshSlate();
 
     root.querySelectorAll('[data-sym-lang]').forEach(function (b) {
       var on = b.getAttribute('data-sym-lang') === next;
@@ -316,7 +320,38 @@
     bars.forEach(function (b) { obs.observe(b); });
   }
 
-  /* ---------- Cinema slate: sticky card follows the active step ---------- */
+  /* ---------- chart day labels stay readable when the chart shrinks ---------- */
+
+  // The views chart is an SVG that scales with its card, and its day labels
+  // scale with it: on a phone they came out at about 5px. Here they keep at
+  // least 11px on screen, and the chart grows a little taller to hold them.
+  // Where the chart is at least its natural width, the labels keep their size.
+  function initChartLabels() {
+    var svg = root.querySelector('[data-chart-days]');
+    var g = svg && svg.querySelector('[data-chart-labels]');
+    if (!g) return;
+    var texts = Array.prototype.slice.call(g.querySelectorAll('text'));
+    var fit = function () {
+      var w = svg.getBoundingClientRect().width;
+      if (!w) return;
+      var size = Math.min(24, Math.max(11, 11 * 600 / w));
+      if (size <= 11.01) {
+        g.setAttribute('font-size', '11');
+        texts.forEach(function (t) { t.setAttribute('y', '158'); });
+        svg.setAttribute('viewBox', '0 0 600 163');
+        return;
+      }
+      var baseline = Math.round(150 + size + 4);
+      g.setAttribute('font-size', size.toFixed(1));
+      texts.forEach(function (t) { t.setAttribute('y', String(baseline)); });
+      // room under the baseline for letters that dip below it (р, у)
+      svg.setAttribute('viewBox', '0 0 600 ' + Math.ceil(baseline + size * 0.32));
+    };
+    fit();
+    window.addEventListener('resize', fit);
+  }
+
+  /* ---------- Synema slate: sticky card follows the active step ---------- */
 
   function initSlate() {
     var steps = Array.prototype.slice.call(root.querySelectorAll('[data-step]'));
@@ -381,6 +416,11 @@
     };
 
     setActive(0);
+    refreshSlate = function () {
+      var i = active;
+      active = -1;
+      setActive(i < 0 ? 0 : i);
+    };
     if (!('IntersectionObserver' in window)) return;
 
     var obs = new IntersectionObserver(function (entries) {
@@ -714,7 +754,20 @@
   initDials();
   initBars();
   initSlate();
+  initChartLabels();
   initFaq();
+
+  // The Synema section was #cinema before the module was renamed. Links shared with the old name still land on it,
+  // whether the page opens with one or a link on it changes the address.
+  function followOldAnchor() {
+    if (location.hash !== '#cinema') return;
+    var synema = document.getElementById('synema');
+    if (!synema) return;
+    history.replaceState(null, '', '#synema');
+    synema.scrollIntoView();
+  }
+  followOldAnchor();
+  window.addEventListener('hashchange', followOldAnchor);
 
   // An explicit ?lang= is a deliberate request and outranks whatever this
   // browser stored last time; otherwise the hreflang alternates would do

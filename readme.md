@@ -31,7 +31,7 @@ root records that pass in full.
 |---|---|
 | `index.html` | The page. 22 sections, Bulgarian in the markup so it reads and indexes without JavaScript |
 | `styles.css` | Webfaces, reset, keyframes, the 20 hover/focus states, the breakpoints |
-| `app.js` | Reveal, scroll chrome, score dial, ratio bars, Cinema slate, FAQ accordion, menu, language |
+| `app.js` | Reveal, scroll chrome, score dial, ratio bars, Synema slate, FAQ accordion, menu, language |
 | `i18n.js` | BG and EN, 550 keys each, covering every `data-i` and `data-ia` in the markup |
 | `assets/fonts/` | 7 subset woff2: Inter and JetBrains Mono (variable, Latin + Cyrillic), Playfair Display italic, and a 21-glyph symbol face |
 | `assets/img/` | 3 persona portraits, 2 marks, 1 favicon - WebP |
