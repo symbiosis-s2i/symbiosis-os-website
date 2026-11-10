@@ -804,29 +804,27 @@ section[data-band] {
   animation-play-state: paused !important;
 }
 
-/* --- phones: no label below 11px ---------------------------------------
+/* --- no label below 11px, on any screen -------------------------------
    The small mono labels (research sources, units, chart, step and chat
-   labels) are fine on a desktop screen, but on a phone, portrait or
-   landscape, they were 9 to 10px. There they read at 11px; the desktop
-   keeps its finer type. */
-@media (max-width: 560px), (hover: none) and (max-height: 500px) {
-  [style*="font-size:.58rem"],
-  [style*="font-size:.6rem"],
-  [style*="font-size:.62rem"],
-  [style*="font-size:.64rem"],
-  [style*="font-size:.66rem"],
-  [style*="font-size:.68rem"],
-  /* the same sizes as the browser rewrites them after a script has touched
-     the element's inline style (see the note on the eyebrow pills) */
-  [style*="font-size: 0.58rem"],
-  [style*="font-size: 0.6rem"],
-  [style*="font-size: 0.62rem"],
-  [style*="font-size: 0.64rem"],
-  [style*="font-size: 0.66rem"],
-  [style*="font-size: 0.68rem"] {
-    font-size: 11px !important;
-  }
+   labels, the REC tag) were drawn at 9 to 10.9px. They now read at 11px
+   everywhere; it was already so on phones. */
+[style*="font-size:.58rem"],
+[style*="font-size:.6rem"],
+[style*="font-size:.62rem"],
+[style*="font-size:.64rem"],
+[style*="font-size:.66rem"],
+[style*="font-size:.68rem"],
+/* the same sizes as the browser rewrites them after a script has touched
+   the element's inline style (see the note on the eyebrow pills) */
+[style*="font-size: 0.58rem"],
+[style*="font-size: 0.6rem"],
+[style*="font-size: 0.62rem"],
+[style*="font-size: 0.64rem"],
+[style*="font-size: 0.66rem"],
+[style*="font-size: 0.68rem"] {
+  font-size: 11px !important;
 }
+
 
 /* ============================================================
    11. Arrivals
