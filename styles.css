@@ -377,27 +377,52 @@ body::after {
   position: relative;
   isolation: isolate;
 }
-[data-spot]::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  border-radius: inherit;
-  opacity: 0;
-  transition: opacity .35s ease;
-  background: radial-gradient(
-    240px circle at var(--mx, 50%) var(--my, 50%),
-    rgba(138, 166, 255, .13),
-    transparent 68%
-  );
+/* Both lights exist only where there is a pointer to follow, and the ring
+   only on the card under it. A pseudo-element that is merely hidden is
+   still styled every time its card is - and the cards are restyled on every
+   frame of their entrance - so on a phone neither is created at all. */
+@media (hover: hover) {
+  [data-spot]::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity .35s ease;
+    background: radial-gradient(
+      240px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(138, 166, 255, .13),
+      transparent 68%
+    );
+  }
+  [data-spot]:hover::after { opacity: 1; }
+
+  /* The same light, caught by the card's edge: a hairline ring that is only
+     lit near the pointer. The two-layer mask leaves just the 1px rim of the
+     gradient. */
+  [data-spot]:hover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    padding: 1px;
+    border-radius: inherit;
+    pointer-events: none;
+    animation: symRingIn .35s ease both;
+    background: radial-gradient(
+      200px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(170, 188, 255, .8),
+      transparent 70%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
 }
-[data-spot]:hover::after { opacity: 1; }
-/* A coarse pointer has no cursor to follow, and the highlight would just
-   flash on tap. */
-@media (hover: none) {
-  [data-spot]::after { display: none; }
-}
+@keyframes symRingIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* --- a specular sweep across the primary action ----------------------- */
 a[data-hv="hv5"],
@@ -448,7 +473,13 @@ a[data-hv="hv17"]:focus-visible::after {
   opacity: .38;
 }
 /* the two eyebrows that already sit inside a pill have their own frame */
-[data-i$=".eyebrow"][style*="border-radius:999px"]::after { display: none; }
+/* (Both spellings: once a script sets any inline property on an element, the
+   browser rewrites its whole style attribute with a space after each colon,
+   and a selector that quotes the original text stops matching. The reveal
+   touches these, so without the second form the pill grew a rule the moment
+   it had faded in.) */
+[data-i$=".eyebrow"][style*="border-radius:999px"]::after,
+[data-i$=".eyebrow"][style*="border-radius: 999px"]::after { display: none; }
 
 /* ============================================================
    8. Section seams
@@ -535,7 +566,7 @@ section[data-band] {
    the top-right corner. The overlay is oversized and drifts slowly
    while hovered, so the light reads as volume, not as a sticker. */
 
-[data-sym-strip] > div:has(> img)::after {
+[data-persona]::after {
   content: "";
   position: absolute;
   inset: -30%;
@@ -549,7 +580,7 @@ section[data-band] {
   animation: symRimDrift 6s ease-in-out infinite alternate;
   animation-play-state: paused;
 }
-[data-sym-strip] > div:has(> img):hover::after {
+[data-persona]:hover::after {
   opacity: 1;
   animation-play-state: running;
 }
@@ -679,16 +710,18 @@ section[data-band] {
    A conic gradient clipped to a hairline ring by the two-layer mask.
    The registered property is what lets the angle itself animate; a
    browser without @property keeps a still highlight on the border. The
-   :has() chain is the chat terminal's only stable address - the markup
-   carries no hook on the card itself. */
+   card carries its own hook in the markup (data-chat-card): addressed
+   through :has(), as it first was, every change anywhere inside any div
+   sent the browser back to re-check that div - over four thousand
+   restyles in one scroll down the page. */
 
 @property --symLaser {
   syntax: "<angle>";
   inherits: false;
   initial-value: 0deg;
 }
-div:has(> div > div > p[data-i="cn.chat.a1"]) { position: relative; }
-div:has(> div > div > p[data-i="cn.chat.a1"])::before {
+[data-chat-card] { position: relative; }
+[data-chat-card]::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -761,9 +794,14 @@ div:has(> div > div > p[data-i="cn.chat.a1"])::before {
    JavaScript they simply run, like every other ambient layer here. */
 
 [data-sym-strip] span[style*="#ff5a5a"].sym-idle::after,
-div.sym-idle:has(> div > div > p[data-i="cn.chat.a1"])::before,
+[data-chat-card].sym-idle::before,
 #aisearch [data-gridfield].sym-idle::after {
   animation-play-state: paused;
+}
+/* the marquee belts and the "live" dots carry their animation inline */
+.sym-idle[style*="symMarq"],
+.sym-idle[style*="symPulse"] {
+  animation-play-state: paused !important;
 }
 
 /* --- phones: no label below 11px ---------------------------------------
@@ -777,7 +815,221 @@ div.sym-idle:has(> div > div > p[data-i="cn.chat.a1"])::before,
   [style*="font-size:.62rem"],
   [style*="font-size:.64rem"],
   [style*="font-size:.66rem"],
-  [style*="font-size:.68rem"] {
+  [style*="font-size:.68rem"],
+  /* the same sizes as the browser rewrites them after a script has touched
+     the element's inline style (see the note on the eyebrow pills) */
+  [style*="font-size: 0.58rem"],
+  [style*="font-size: 0.6rem"],
+  [style*="font-size: 0.62rem"],
+  [style*="font-size: 0.64rem"],
+  [style*="font-size: 0.66rem"],
+  [style*="font-size: 0.68rem"] {
     font-size: 11px !important;
   }
 }
+
+/* ============================================================
+   11. Arrivals
+
+   Things that happen once, when a part of the page reaches the reader, and
+   a few that answer the reader directly. All of it moves transform and
+   opacity only, apart from three colour fades on elements a few pixels
+   across. Everything that starts hidden or dimmed is armed from app.js
+   (.sym-arm), in the same breath as the observer that
+   releases it: without JavaScript, or with reduced motion, the page is
+   simply complete. The reduced-motion block in section 3 shortens every
+   animation and transition here to nothing.
+   ============================================================ */
+
+/* --- section headlines arrive word by word ---------------------------- */
+.sym-w {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(.42em);
+  animation: symWord .7s cubic-bezier(.2, .7, .2, 1) both;
+}
+@keyframes symWord {
+  from { opacity: 0; transform: translateY(.42em); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- the rule beside each eyebrow draws itself ------------------------ */
+[data-i$=".eyebrow"].sym-arm::after {
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform .9s cubic-bezier(.2, .7, .2, 1) .3s;
+}
+[data-i$=".eyebrow"].sym-arm.sym-in::after { transform: scaleX(1); }
+
+/* --- the header shows where you are -----------------------------------
+   (.sym-navl is put on the six links by app.js; like every hook in this
+   section it is a class, so the browser only ever tries these rules on the
+   handful of elements that carry it.) */
+.sym-navl { position: relative; }
+.sym-navl[data-hv="hv2"]::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  bottom: 2px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: #8aa6ff;
+  transform: scaleX(0);
+  transition: transform .4s cubic-bezier(.2, .7, .2, 1);
+}
+.sym-navl[data-hv="hv2"][aria-current]::after { transform: scaleX(1); }
+.sym-navl[data-hv="hv2"][aria-current] { color: #f6f6f9 !important; }
+/* the two links that are already pills fill in instead */
+.sym-navl[data-hv="hv0"][aria-current] {
+  background: rgba(91, 123, 255, .26) !important;
+  border-color: rgba(138, 166, 255, .7) !important;
+}
+.sym-navl[data-hv="hv1"][aria-current] {
+  background: rgba(255, 155, 74, .22) !important;
+  border-color: rgba(255, 155, 74, .7) !important;
+}
+
+/* --- the phone menu opens, it does not just appear ---------------------
+   (.sym-ml and its --i are set by app.js on the panel's links and buttons) */
+.sym-open { animation: symMenuIn .26s ease both; }
+.sym-open .sym-ml {
+  animation: symMenuLink .5s cubic-bezier(.2, .7, .2, 1) both;
+  animation-delay: calc(50ms + var(--i, 0) * 42ms);
+}
+@keyframes symMenuIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes symMenuLink {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- FAQ: the answer opens, it does not jump ---------------------------
+   Where the browser can animate to an automatic height the panel itself
+   grows and closes; everywhere the answer at least eases in. */
+.sym-faq[open] > p { animation: symFaqIn .45s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes symFaqIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@supports (interpolate-size: allow-keywords) {
+  .sym-faq { interpolate-size: allow-keywords; }
+  .sym-faq::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size .4s cubic-bezier(.2, .7, .2, 1), content-visibility .4s allow-discrete;
+  }
+  .sym-faq[open]::details-content { block-size: auto; }
+}
+
+/* --- the hub wakes up: one system, its parts answering in turn --------- */
+.sym-in > [data-hub-core]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(138, 166, 255, .65);
+  pointer-events: none;
+  opacity: 0;
+  animation: symCorePing 1.5s cubic-bezier(.16, 1, .3, 1) .35s 2 both;
+}
+@keyframes symCorePing {
+  0%   { transform: scale(1);          opacity: .8; }
+  100% { transform: scale(1.22, 1.9);  opacity: 0; }
+}
+.sym-arm .sym-chip { opacity: 0; }
+.sym-arm.sym-in .sym-chip {
+  animation: symChipWake 1s cubic-bezier(.2, .7, .2, 1) both;
+  animation-delay: calc(.5s + var(--i, 0) * 60ms);
+}
+@keyframes symChipWake {
+  0%   { opacity: 0; transform: translateY(8px) scale(.96); }
+  45%  { opacity: 1; border-color: rgba(138, 166, 255, .6); color: #f6f6f9; }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* --- process: each step lights as it comes up the screen --------------- */
+.sym-step-n {
+  position: relative;
+  transition: border-color .5s, background-color .5s, color .5s;
+}
+.sym-step:not(.sym-on) .sym-step-n {
+  border-color: rgba(255, 255, 255, .12) !important;
+  background: rgba(255, 255, 255, .03) !important;
+  color: #7d7d90 !important;
+}
+.sym-step.sym-on .sym-step-n::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  border: 1px solid rgba(138, 166, 255, .6);
+  pointer-events: none;
+  animation: symRipple 1s cubic-bezier(.16, 1, .3, 1) .1s 1 both;
+}
+/* the connector under the number runs down to the next step */
+.sym-step-l { position: relative; }
+.sym-step-l::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #8aa6ff, rgba(138, 166, 255, .12));
+  transform: scaleY(0);
+  transform-origin: 50% 0;
+  transition: transform 1s cubic-bezier(.2, .7, .2, 1) .2s;
+}
+.sym-step.sym-on .sym-step-l::after { transform: scaleY(1); }
+
+/* --- comparison: the usual stack is crossed out, tool by tool ---------- */
+.sym-x {
+  position: relative;
+  transition: color .5s ease;
+  transition-delay: calc(.35s + var(--i, 0) * 85ms);
+}
+.sym-x::after {
+  content: '';
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  top: 54%;
+  height: 1px;
+  background: #808092;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform .5s cubic-bezier(.2, .7, .2, 1);
+  transition-delay: calc(.35s + var(--i, 0) * 85ms);
+}
+.sym-on .sym-x::after { transform: scaleX(1); }
+.sym-on .sym-x { color: #666677 !important; }
+
+/* --- depth that follows the scroll --------------------------------------
+   Driven by the scroll position itself (a view timeline), so no script runs
+   and the compositor does the work: the character portraits settle from a
+   slightly closer framing as their card crosses the screen, and the ruled
+   fields drift a little against their sections. A browser without scroll
+   timelines shows both at rest. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) and (hover: hover) and (min-width: 900px) {
+    [data-hv="hv9"] > div:first-child > img {
+      animation: symKen linear both;
+      animation-timeline: view();
+      animation-range: entry 0% exit 100%;
+    }
+    [data-gridfield] {
+      animation: symFieldDrift linear both;
+      animation-timeline: view();
+      animation-range: entry 0% exit 100%;
+    }
+  }
+}
+@keyframes symKen {
+  from { transform: scale(1.12) translate3d(0, -2.5%, 0); }
+  to   { transform: scale(1) translate3d(0, 2%, 0); }
+}
+@keyframes symFieldDrift {
+  from { transform: translate3d(0, -34px, 0); }
+  to   { transform: translate3d(0, 34px, 0); }
+}
+
+/* --- the language switch cross-fades (View Transitions) ---------------- */
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: .32s; }

@@ -96,6 +96,8 @@
     if (!menu) return;
     menuOpen = open;
     menu.style.display = open ? 'flex' : 'none';
+    // styles.css fades the panel in and brings its links up one after the other
+    menu.classList.toggle('sym-open', open);
     document.body.style.overflow = open ? 'hidden' : '';
     if (burger) burger.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
@@ -104,6 +106,16 @@
 
   if (menu) {
     menu.setAttribute('aria-hidden', 'true');
+    // the order the panel's links and buttons arrive in when it opens (styles.css)
+    var menuNav = menu.querySelector('nav');
+    if (menuNav) {
+      var arriving = Array.prototype.slice.call(menuNav.children);
+      for (var after = menuNav.nextElementSibling; after; after = after.nextElementSibling) arriving.push(after);
+      arriving.forEach(function (el, i) {
+        el.classList.add('sym-ml');
+        el.style.setProperty('--i', String(i));
+      });
+    }
     // Any link inside the panel is a navigation; the panel should not
     // stay over the destination.
     menu.addEventListener('click', function (e) {
@@ -127,9 +139,17 @@
 
   /* ---------- declarative actions ---------- */
 
+  // A click on BG or EN cross-fades the page into the other language where the browser can do it in one step
+  // (View Transitions); everywhere else, and with reduced motion, the text simply changes.
+  function choose(next) {
+    if (next === lang) return;
+    if (!reduceMotion && document.startViewTransition) document.startViewTransition(function () { swap(next); });
+    else swap(next);
+  }
+
   var ACTIONS = {
-    setBG: function () { swap('bg'); },
-    setEN: function () { swap('en'); },
+    setBG: function () { choose('bg'); },
+    setEN: function () { choose('en'); },
     toggleMenu: toggleMenu
   };
 
@@ -152,29 +172,120 @@
     // or with reduced motion asked for, the page stays as authored.
     if (reduceMotion || !('IntersectionObserver' in window)) return;
 
-    els.forEach(function (el) {
+    // A blur that eases off is the most expensive part of the reveal: every
+    // frame repaints the whole element. A phone gets the rise and the fade,
+    // which the compositor carries alone.
+    var soft = !window.matchMedia('(hover: none), (max-width: 760px)').matches;
+
+    // What the markup itself said. The reveal borrows these three properties
+    // and has to hand them back: left in place, its transition replaced the
+    // hover easing the design gave the cards, and a zero blur kept a layer
+    // alive under every one of them.
+    // styles.css has two entrance details of its own (the rule beside an
+    // eyebrow drawing in, the hub waking up). They wait on .sym-arm and are
+    // released by .sym-in, both set here, so they are only ever armed where
+    // this observer can also fire them - and only on the elements concerned,
+    // which keeps the browser from restyling the whole page for a class.
+    var marked = function (el) {
+      return el.hasAttribute('data-hub') || /\.eyebrow$/.test(el.getAttribute('data-i') || '');
+    };
+
+    var authored = [];
+    els.forEach(function (el, i) {
+      if (marked(el)) el.classList.add('sym-arm');
+      if (el.hasAttribute('data-hub')) {
+        Array.prototype.slice.call(el.querySelectorAll('li')).forEach(function (chip, n) {
+          chip.classList.add('sym-chip');
+          chip.style.setProperty('--i', String(n));
+        });
+      }
+      authored[i] = { o: el.style.opacity, t: el.style.transform, f: el.style.filter, tr: el.style.transition };
       el.style.opacity = '0';
       el.style.transform = 'translateY(26px)';
-      el.style.filter = 'blur(6px)';
-      el.style.willChange = 'opacity, transform, filter';
+      if (soft) el.style.filter = 'blur(6px)';
+      el.style.willChange = soft ? 'opacity, transform, filter' : 'opacity, transform';
     });
+
+    // Section headlines arrive word by word. The words are only wrapped for
+    // the length of the entrance; afterwards the heading is plain text again,
+    // so the language switch and the browser's own line balancing see what
+    // they always saw.
+    var words = function (el, d) {
+      var text = el.textContent;
+      var parts = text.split(/(\s+)/);
+      if (parts.length < 5 || parts.length > 60) return false;
+      var height = el.offsetHeight;
+      var frag = document.createDocumentFragment();
+      var n = 0;
+      parts.forEach(function (part) {
+        if (!part) return;
+        // the space as written: a non-breaking one has to stay non-breaking
+        if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+        var w = document.createElement('span');
+        w.className = 'sym-w';
+        w.style.animationDelay = (d + n * 42) + 'ms';
+        w.textContent = part;
+        frag.appendChild(w);
+        n++;
+      });
+      el.textContent = '';
+      el.appendChild(frag);
+      // Wrapped words can break lines differently from plain text (the
+      // browser balances a heading's lines as a whole). Where they do, the
+      // heading keeps its plain text and arrives as one block instead.
+      if (el.offsetHeight !== height) { el.textContent = text; return false; }
+      window.setTimeout(function () {
+        // a language switch in the meantime has already written plain text
+        if (el.querySelector('.sym-w')) el.textContent = el.textContent;
+      }, d + n * 42 + 900);
+      return true;
+    };
 
     var io = new IntersectionObserver(function (entries, obs) {
       entries.forEach(function (en) {
         if (!en.isIntersecting) return;
         var el = en.target;
+        var was = authored[els.indexOf(el)];
         var d = parseInt(el.getAttribute('data-reveal-d') || '0', 10);
+        obs.unobserve(el);
+        if (marked(el)) el.classList.add('sym-in');
+
+        // word by word where there is a pointer and room: a phone gets the
+        // heading as one block, which is one layer instead of a dozen
+        if (soft && el.tagName === 'H2' && words(el, d)) {
+          // the words carry the entrance; the heading itself just stops hiding
+          el.style.opacity = was.o;
+          el.style.transform = was.t;
+          el.style.filter = was.f;
+          el.style.willChange = '';
+          return;
+        }
+
         el.style.transition =
           'opacity .8s cubic-bezier(.2,.7,.2,1) ' + d + 'ms, ' +
-          'transform .9s cubic-bezier(.2,.7,.2,1) ' + d + 'ms, ' +
-          'filter .8s ease ' + d + 'ms';
+          'transform .9s cubic-bezier(.2,.7,.2,1) ' + d + 'ms' +
+          (soft ? ', filter .8s ease ' + d + 'ms' : '');
         el.style.opacity = '1';
         el.style.transform = 'translateY(0)';
-        el.style.filter = 'blur(0px)';
+        if (soft) el.style.filter = 'blur(0px)';
         // willChange is a promise to the compositor, not a decoration -
-        // leaving it set on 110 elements keeps 110 layers alive.
-        window.setTimeout(function () { el.style.willChange = 'auto'; }, 1200 + d);
-        obs.unobserve(el);
+        // leaving it set on 110 elements keeps 110 layers alive. The same
+        // goes for the borrowed properties: once the entrance has landed the
+        // element is exactly as the markup wrote it. The authored
+        // transition goes back two frames after the values do: returned
+        // together, a card whose design eases its transform would start a
+        // third of a second of transition from "moved by nothing" to "not
+        // moved" - invisible, and restyled on every frame of it.
+        window.setTimeout(function () {
+          el.style.transition = 'none';
+          el.style.opacity = was.o;
+          el.style.transform = was.t;
+          el.style.filter = was.f;
+          el.style.willChange = '';
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () { el.style.transition = was.tr; });
+          });
+        }, 1000 + d);
       });
     }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
 
@@ -419,11 +530,42 @@
       });
     };
 
+    // The card shows one step's words at a time, and the steps are not the
+    // same length. On a phone, where the card sits above the list instead of
+    // beside it, every change resized it and moved the page under the
+    // reader's thumb. It now reserves the height of its longest step, measured
+    // with the words actually in use, again after a language switch or resize.
+    var fit = function () {
+      [[title, '[data-step-title]'], [body, '[data-step-body]']].forEach(function (pair) {
+        var node = pair[0];
+        var shown = node.textContent;
+        var tallest = 0;
+        node.style.minHeight = '';
+        steps.forEach(function (st) {
+          var src = st.querySelector(pair[1]);
+          if (!src) return;
+          node.textContent = src.textContent;
+          tallest = Math.max(tallest, node.offsetHeight);
+        });
+        node.textContent = shown;
+        if (tallest) node.style.minHeight = tallest + 'px';
+      });
+    };
+
     setActive(0);
+    fit();
+    // measured again once the webfonts are in: the fallback face sets wider
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+    var fitTimer = 0;
+    window.addEventListener('resize', function () {
+      window.clearTimeout(fitTimer);
+      fitTimer = window.setTimeout(fit, 180);
+    });
     refreshSlate = function () {
       var i = active;
       active = -1;
       setActive(i < 0 ? 0 : i);
+      fit();
     };
     if (!('IntersectionObserver' in window)) return;
 
@@ -446,6 +588,7 @@
     var items = Array.prototype.slice.call(faq.querySelectorAll('details'));
 
     items.forEach(function (d) {
+      d.classList.add('sym-faq');   // styles.css: the answer opens smoothly
       var mark = d.querySelector('summary > span:last-child');
       if (mark) mark.style.transition = 'transform .3s cubic-bezier(.2,.7,.2,1), color .3s, border-color .3s';
       d.addEventListener('toggle', function () {
@@ -537,14 +680,22 @@
 
   function initSpotlight() {
     if (!window.matchMedia('(hover: hover)').matches) return;
-    var current = null;
-    document.addEventListener('pointermove', function (e) {
-      var card = e.target.closest && e.target.closest('[data-spot]');
-      if (!card) { current = null; return; }
-      if (card !== current) current = card;
+    // A mouse reports far more often than the screen refreshes; the card is
+    // measured and written once per frame, with the last position seen.
+    var card = null, x = 0, y = 0, raf = 0;
+    var paint = function () {
+      raf = 0;
+      if (!card) return;
       var r = card.getBoundingClientRect();
-      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+      if (!r.width || !r.height) return;
+      card.style.setProperty('--mx', ((x - r.left) / r.width * 100).toFixed(1) + '%');
+      card.style.setProperty('--my', ((y - r.top) / r.height * 100).toFixed(1) + '%');
+    };
+    document.addEventListener('pointermove', function (e) {
+      card = e.target.closest ? e.target.closest('[data-spot]') : null;
+      if (!card) return;
+      x = e.clientX; y = e.clientY;
+      if (!raf) raf = requestAnimationFrame(paint);
     }, { passive: true });
   }
 
@@ -697,16 +848,21 @@
   function initChecks() {
     if (reduceMotion || !('IntersectionObserver' in window)) return;
     var items = [];
-    ['as.c1', 'as.c2', 'as.c3', 'as.c4', 'as.c5'].forEach(function (k) {
-      var t = root.querySelector('[data-i="' + k + '"]');
-      var li = t && t.parentElement;
-      if (li && li.firstElementChild !== t) items.push(li);
+    // the AI-search audit, then the ticks of the Symbiosis OS card in the comparison
+    [['as.c1', 'as.c2', 'as.c3', 'as.c4', 'as.c5'],
+     ['cmp.d2.l1', 'cmp.d2.l2', 'cmp.d2.l3', 'cmp.d2.l4', 'cmp.d2.l5', 'cmp.d2.l6', 'cmp.d2.l7', 'cmp.d2.l8']
+    ].forEach(function (group) {
+      var n = 0;
+      group.forEach(function (k) {
+        var t = root.querySelector('[data-i="' + k + '"]');
+        var li = t && t.parentElement;
+        if (!li || li.firstElementChild === t) return;
+        li.classList.add('sym-check-pop');
+        li.style.setProperty('--symCheckD', (n++ * 90) + 'ms');
+        items.push(li);
+      });
     });
     if (!items.length) return;
-    items.forEach(function (li, i) {
-      li.classList.add('sym-check-pop');
-      li.style.setProperty('--symCheckD', (i * 90) + 'ms');
-    });
     var obs = new IntersectionObserver(function (entries, o) {
       entries.forEach(function (en) {
         if (!en.isIntersecting) return;
@@ -715,6 +871,87 @@
       });
     }, { threshold: 0.6 });
     items.forEach(function (li) { obs.observe(li); });
+  }
+
+  /* ---------- the header shows where you are ----------
+     One observer with a hairline root across the middle of the screen: the
+     section that line is inside is the current one. Sections the header has
+     no link for count toward the last one that does, so the marker never
+     goes dark halfway down the page. */
+
+  function initNavSpy() {
+    var nav = root.querySelector('[data-sym-nav] nav');
+    var main = root.querySelector('main');
+    if (!nav || !main || !('IntersectionObserver' in window)) return;
+    var links = {};
+    Array.prototype.slice.call(nav.querySelectorAll('a[href^="#"]')).forEach(function (a) {
+      links[a.getAttribute('href').slice(1)] = a;
+      a.classList.add('sym-navl');
+    });
+    var owner = new Map();
+    var last = null;
+    Array.prototype.slice.call(main.children).forEach(function (sec) {
+      if (sec.tagName !== 'SECTION') return;
+      if (sec.id && links[sec.id]) last = sec.id;
+      owner.set(sec, last);
+    });
+    var current = null;
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var id = owner.get(en.target) || null;
+        if (id === current) return;
+        if (current && links[current]) links[current].removeAttribute('aria-current');
+        current = id;
+        if (id && links[id]) links[id].setAttribute('aria-current', 'location');
+      });
+    }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
+    owner.forEach(function (id, sec) { obs.observe(sec); });
+  }
+
+  /* ---------- things that switch on once, when they reach the reader ----------
+     The six process steps light their number and run their connector as each
+     one comes up the screen; the "usual stack" in the comparison is crossed
+     out line by line. Both are a class added once - styles.css does the
+     drawing - and both are armed only where this observer can run, so a page
+     without JavaScript, or a visitor who asked for no motion, sees every step
+     lit and nothing crossed out. */
+
+  function initOnce() {
+    if (reduceMotion || !('IntersectionObserver' in window)) return;
+    var arm = function (els, margin, threshold) {
+      if (!els.length) return;
+      var obs = new IntersectionObserver(function (entries, o) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          o.unobserve(en.target);
+          en.target.classList.add('sym-on');
+        });
+      }, { rootMargin: margin, threshold: threshold });
+      els.forEach(function (el) { obs.observe(el); });
+    };
+
+    var steps = Array.prototype.slice.call(root.querySelectorAll('#process ol > li'));
+    steps.forEach(function (li) {
+      var rail = li.firstElementChild;
+      var num = rail && rail.firstElementChild;
+      var line = rail && rail.lastElementChild;
+      if (!num || !line || num === line) return;
+      li.classList.add('sym-step');
+      num.classList.add('sym-step-n');
+      line.classList.add('sym-step-l');
+    });
+    arm(steps, '0px 0px -32% 0px', 0.2);
+
+    var first = root.querySelector('[data-i="cmp.d1.l1"]');
+    var list = first && first.closest('ul');
+    if (list) {
+      Array.prototype.slice.call(list.querySelectorAll('[data-i^="cmp.d1.l"]')).forEach(function (tool, n) {
+        tool.classList.add('sym-x');
+        tool.style.setProperty('--i', String(n));
+      });
+      arm([list], '0px 0px -12% 0px', 0.45);
+    }
   }
 
   /* ---------- park the unconditional loops while offscreen ----------
@@ -734,6 +971,12 @@
     }
     var field = root.querySelector('#aisearch [data-gridfield]');
     if (field) hosts.push(field);
+    // The two marquee belts and the three "live" dots loop for as long as
+    // the page is open. Each dot is a box-shadow animation - a style pass
+    // and a repaint on every frame - and they were running at the bottom of
+    // the page while the reader was at the top.
+    Array.prototype.slice.call(root.querySelectorAll('[style*="symMarq"], span[style*="symPulse"]'))
+      .forEach(function (el) { if (hosts.indexOf(el) < 0) hosts.push(el); });
     if (!hosts.length) return;
     var obs = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
@@ -754,6 +997,8 @@
   initChart();
   initChecks();
   initLoopGate();
+  initNavSpy();
+  initOnce();
   initScroll();
   initDials();
   initBars();

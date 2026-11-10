@@ -30,9 +30,9 @@ root records that pass in full.
 | Path | What it is |
 |---|---|
 | `index.html` | The page. 22 sections, Bulgarian in the markup so it reads and indexes without JavaScript |
-| `styles.css` | Webfaces, reset, keyframes, the 20 hover/focus states, the breakpoints |
-| `app.js` | Reveal, scroll chrome, score dial, ratio bars, Synema slate, FAQ accordion, menu, language |
-| `i18n.js` | BG and EN, 550 keys each, covering every `data-i` and `data-ia` in the markup |
+| `styles.css` | Webfaces, reset, keyframes, the 20 hover/focus states, the breakpoints, and the arrival effects (section 11) |
+| `app.js` | Reveal, scroll chrome, score dial, ratio bars, Synema slate, FAQ accordion, menu, language, the header's section marker, the one-time arrivals |
+| `i18n.js` | BG and EN, 596 keys each, covering every `data-i` and `data-ia` in the markup |
 | `assets/fonts/` | 7 subset woff2: Inter and JetBrains Mono (variable, Latin + Cyrillic), Playfair Display italic, and a 21-glyph symbol face |
 | `assets/img/` | 3 persona portraits, 2 marks, 1 favicon - WebP |
 
@@ -53,6 +53,25 @@ Bulgarian is the markup default; `app.js` swaps to English on request.
   same pattern or it will silently do nothing.
 - **`data-mob="hide"` / `data-mob="only"`** are driven by media queries now,
   not JavaScript. Do not reintroduce a resize listener for them.
+- **Effects are hooked by class, and armed by the script that releases them.**
+  Anything that starts hidden or dimmed (`.sym-arm`, `.sym-step`, `.sym-chip`,
+  `.sym-x`) gets its class from `app.js`, next to the observer that switches
+  it on. Without JavaScript, or with reduced motion, nothing is armed and the
+  page is complete. Do not hide something in `styles.css` alone.
+- **Keep selectors cheap.** A rule whose last part is a bare tag, `*`, or a
+  `:has()` is tried on every element each time anything restyles - and the
+  reveal restyles cards on every frame. One `div:has(...)` cost over four
+  thousand restyles per scroll of the page; a pseudo-element that was only
+  hidden on phones (`display: none`) cost a third of all style work there.
+  Give the element a class or a `data-` attribute and address that. Create
+  pointer effects inside `@media (hover: hover)` rather than hiding them
+  outside it.
+- **Loops pause offscreen.** Anything with `infinite` in its animation goes
+  through `initLoopGate` in `app.js` (`.sym-idle`).
+- **Text lives in two places.** Bulgarian is in `index.html` and in
+  `i18n.js`; English only in `i18n.js`. Change both, and keep the Synema
+  slate's default text (`data-slate-title`, `data-slate-body`) in step with
+  step one.
 - **The symbol face matters.** `▶ ✓ ✕ ◆ ◉ ✦ →` and the rest of the geometric
   marks exist in neither Inter nor JetBrains Mono. Without `SymIcons` in the
   font stack, iOS and Android resolve several of them as colour emoji.
