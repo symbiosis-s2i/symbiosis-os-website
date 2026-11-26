@@ -233,6 +233,11 @@ summary::-webkit-details-marker { display: none; }
   [data-mob="hide"] { display: none !important; }
   [data-mob="only"] { display: flex !important; }
 }
+/* The header's demo button needs the room of a wide window (the Bulgarian header is the longest); below that the
+   hero's button and the phone menu carry it. */
+@media (max-width: 1399.98px) {
+  [data-wide="only"] { display: none !important; }
+}
 @media (min-width: 1180px) {
   [data-mob="only"] { display: none !important; }
 }
