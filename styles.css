@@ -1107,3 +1107,11 @@ section[data-band] {
   /* No sweep: the rail is simply lit for the step. */
   [data-slate-rail].sym-rail-run { animation: none; background: #8aa6ff; }
 }
+
+/* --- the logo at the top left on a phone: 28px was too small to read the mark (the header keeps its room) --- */
+@media (max-width: 700px) {
+  [data-sym-nav] > a[aria-label="Symbiosis OS"] > img {
+    width: 38px !important;
+    height: 38px !important;
+  }
+}
