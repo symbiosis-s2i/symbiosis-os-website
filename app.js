@@ -477,6 +477,12 @@
 
     var rails = Array.prototype.slice.call(root.querySelectorAll('[data-slate-rail]'));
     var active = -1;
+    // Below 900px the card is not sticky: it sits above the steps and is off screen while they scroll past, so it
+    // would never change where anyone can see it. There it plays through the steps by itself while it is in view.
+    var narrow = window.matchMedia('(max-width: 900px)');
+    var playing = false;
+    var STEP_MS = 4800;
+    var playTimer = 0;
 
     var setActive = function (i) {
       if (i === active || i < 0) return;
@@ -518,8 +524,17 @@
       }
 
       rails.forEach(function (r, ri) {
+        r.classList.remove('sym-rail-run');
         r.style.background = ri <= i ? '#8aa6ff' : 'rgba(255,255,255,0.1)';
       });
+      // Playing by itself (a phone, where the card is not beside the steps): the current rail fills over the step's
+      // time, so the line shows how long until the next step.
+      if (playing && rails[i]) {
+        var run = rails[i];
+        run.style.background = '';
+        void run.offsetWidth;
+        run.classList.add('sym-rail-run');
+      }
       steps.forEach(function (s, si) {
         var on = si === i;
         var last = si === steps.length - 1;
@@ -569,7 +584,44 @@
     };
     if (!('IntersectionObserver' in window)) return;
 
+    var card = num.closest('[data-sticky-col]') || num.parentNode;
+    var cardSeen = false;
+    var schedule = function () {
+      window.clearTimeout(playTimer);
+      if (!playing) return;
+      playTimer = window.setTimeout(function () {
+        setActive((active + 1) % steps.length);
+        schedule();
+      }, STEP_MS);
+    };
+    var updatePlay = function () {
+      var should = narrow.matches && cardSeen && !document.hidden;
+      if (should === playing) return;
+      playing = should;
+      if (playing) {
+        // start the current step again, so its rail fills from the beginning
+        var i = active < 0 ? 0 : active;
+        active = -1;
+        setActive(i);
+        schedule();
+      } else {
+        window.clearTimeout(playTimer);
+        rails.forEach(function (r) { r.classList.remove('sym-rail-run'); });
+        var j = active;
+        active = -1;
+        setActive(j < 0 ? 0 : j);
+      }
+    };
+    new IntersectionObserver(function (entries) {
+      cardSeen = entries[0].isIntersecting;
+      updatePlay();
+    }, { threshold: 0.5 }).observe(card);
+    document.addEventListener('visibilitychange', updatePlay);
+    if (narrow.addEventListener) narrow.addEventListener('change', updatePlay);
+    else if (narrow.addListener) narrow.addListener(updatePlay);
+
     var obs = new IntersectionObserver(function (entries) {
+      if (playing) return;
       var best = null;
       entries.forEach(function (en) {
         if (en.isIntersecting && (!best || en.intersectionRatio > best.intersectionRatio)) best = en;

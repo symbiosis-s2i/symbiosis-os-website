@@ -1091,3 +1091,19 @@ section[data-band] {
   [data-persona-card] > div:last-child { padding: 16px 16px 18px !important; }
   div[style*="width:clamp(196px,19vw,254px)"] { width: 136px !important; }
 }
+
+/* --- the slate plays by itself on a phone: the current rail fills over the step's time (app.js, initSlate) --- */
+@property --sym-fill {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+@keyframes symRailFill { from { --sym-fill: 0%; } to { --sym-fill: 100%; } }
+[data-slate-rail].sym-rail-run {
+  background: linear-gradient(90deg, #8aa6ff var(--sym-fill), rgba(255, 255, 255, 0.1) var(--sym-fill));
+  animation: symRailFill 4.8s linear forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No sweep: the rail is simply lit for the step. */
+  [data-slate-rail].sym-rail-run { animation: none; background: #8aa6ff; }
+}
