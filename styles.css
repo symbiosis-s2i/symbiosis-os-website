@@ -1080,7 +1080,14 @@ section[data-band] {
   font-weight: 400;
 }
 
+/* On a phone a vault card puts its picture beside the text, as a tall narrow column: the whole head and shoulders stay
+   in view, where a short full-width band cut through the forehead and the chin. */
 @media (max-width: 700px) {
-  [data-persona-media] { aspect-ratio: auto !important; height: 176px; }
+  [data-persona-card] { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: stretch; }
+  [data-persona-media] { aspect-ratio: auto !important; height: 100%; min-height: 168px; }
+  [data-persona-media] img { object-position: 50% 22% !important; }
+  [data-persona-media] img[src*="persona-anna"] { object-position: 64% 22% !important; }
+  [data-persona-media] > div { display: none; }
+  [data-persona-card] > div:last-child { padding: 16px 16px 18px !important; }
   div[style*="width:clamp(196px,19vw,254px)"] { width: 136px !important; }
 }
