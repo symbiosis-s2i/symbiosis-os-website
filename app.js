@@ -484,7 +484,7 @@
       var el = steps[i];
       var t = el.querySelector('[data-step-title]');
       var b = el.querySelector('[data-step-body]');
-      num.textContent = String(i + 1).padStart(2, '0');
+      num.textContent = String(i + 1);
       if (t) title.textContent = t.textContent;
       if (b) body.textContent = b.textContent;
 
